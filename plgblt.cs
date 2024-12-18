@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-class GDIRandomPolygonEffect
+class PlgBltEffect
 {
     // Import necessary GDI functions
     [DllImport("gdi32.dll", SetLastError = true)]
