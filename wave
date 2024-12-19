@@ -1,0 +1,195 @@
+using System;
+using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
+
+class Program
+{
+    // PInvoke declarations for necessary Win32 functions
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDesktopWindow();
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool ReleaseDC(IntPtr hWnd, IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int width, int height);
+
+    [DllImport("gdi32.dll")]
+    public static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr SelectObject(IntPtr hdc, IntPtr hObject);
+
+    [DllImport("gdi32.dll")]
+    public static extern bool BitBlt(IntPtr hdcDest, int xDest, int yDest, int width, int height, IntPtr hdcSource, int xSource, int ySource, uint rop);
+
+    // Constants for BitBlt and operations
+    public const uint SRCCOPY = 0x00CC0020;
+
+    // Define the screen dimensions
+    static int screenW = Screen.PrimaryScreen.Bounds.Width;
+    static int screenH = Screen.PrimaryScreen.Bounds.Height;
+
+    // Ball movement variables
+    static int ballPosX = 100;
+    static int ballPosY = 100;
+    static int ballWidth = 50;
+    static int ballHeight = 50;
+    static int moveStepX = 5;
+    static int moveStepY = 5;
+
+    // HSL to RGB conversion structure and method
+    public struct HSL
+    {
+        public float H, S, L;
+
+        public HSL(float h, float s, float l)
+        {
+            H = h;
+            S = s;
+            L = l;
+        }
+    }
+
+    public struct RGB
+    {
+        public byte R, G, B;
+    }
+
+    public static RGB HSLToRGB(HSL hsl)
+    {
+        float c = (1 - Math.Abs(2 * hsl.L - 1)) * hsl.S;
+        float x = c * (1 - Math.Abs((hsl.H / 60f) % 2 - 1));
+        float m = hsl.L - c / 2;
+
+        float r, g, b;
+        if (hsl.H >= 0 && hsl.H < 60)
+        {
+            r = c; g = x; b = 0;
+        }
+        else if (hsl.H >= 60 && hsl.H < 120)
+        {
+            r = x; g = c; b = 0;
+        }
+        else if (hsl.H >= 120 && hsl.H < 180)
+        {
+            r = 0; g = c; b = x;
+        }
+        else if (hsl.H >= 180 && hsl.H < 240)
+        {
+            r = 0; g = x; b = c;
+        }
+        else if (hsl.H >= 240 && hsl.H < 300)
+        {
+            r = x; g = 0; b = c;
+        }
+        else
+        {
+            r = c; g = 0; b = x;
+        }
+
+        r = (r + m) * 255;
+        g = (g + m) * 255;
+        b = (b + m) * 255;
+
+        return new RGB { R = (byte)r, G = (byte)g, B = (byte)b };
+    }
+
+    // Main entry point
+    public static void Main()
+    {
+        try
+        {
+            // Get the device context for the screen
+            IntPtr hwnd = GetDesktopWindow();
+            IntPtr hdc = GetDC(hwnd);
+
+            // Variables for sinusoidal animation effect
+            int redrawCounter = 0;
+            double num2 = 0f;
+            float num3 = 0f;
+            float num4 = 10f;
+            int cc = 0;
+
+            // Main loop to apply the animation effect
+            while (true)
+            {
+                // Create a compatible DC and bitmap for drawing
+                IntPtr intPtr = CreateCompatibleDC(hdc);
+                IntPtr intPtr2 = CreateCompatibleBitmap(hdc, screenW, screenH);
+                SelectObject(intPtr, intPtr2);
+                BitBlt(intPtr, 0, 0, screenW, screenH, hdc, 0, 0, SRCCOPY);
+
+                // Create graphics object
+                Graphics g = Graphics.FromHdc(intPtr);
+                double num = screenW / 10;
+
+                // Sinusoidal animation effect and redraw process
+                for (float num5 = 0f; num5 < num; num5 += 0.1f)
+                {
+                    float num6 = (float)Math.Sin(num5);
+                    redrawCounter++;
+                    int num7 = redrawCounter;
+                    int num8 = (int)(num2 * num4 + num3);
+                    BitBlt(intPtr, num7, num8, 1, screenH, intPtr, num7, 0, SRCCOPY);
+                    BitBlt(intPtr, num7, screenH + num8, 1, screenH, intPtr, num7, 0, SRCCOPY);
+                    BitBlt(intPtr, num7, -screenH + num8, 1, screenH, intPtr, num7, 0, SRCCOPY);
+
+                    if (redrawCounter >= screenW)
+                    {
+                        redrawCounter = 0;
+                    }
+
+                    num2 = num6;
+                }
+
+                // Update ball position based on movement speed
+                ballPosX += moveStepX;
+                if (ballPosX < 0 || ballPosX + ballWidth > screenW)
+                {
+                    moveStepX = -moveStepX;
+                }
+
+                ballPosY += moveStepY;
+                if (ballPosY < 0 || ballPosY + ballHeight > screenH)
+                {
+                    moveStepY = -moveStepY;
+                }
+
+                cc += 10;
+                HSL data = new HSL(cc % 360, 1f, 0.5f);
+                RGB value = HSLToRGB(data);
+                Brush brush = new SolidBrush(Color.FromArgb(value.R, value.G, value.B));
+                Pen pen = new Pen(Color.Red);
+
+                // Draw the ball
+                g.FillEllipse(brush, ballPosX, ballPosY, ballWidth, ballHeight);
+
+                // Draw ellipses around the ball
+                for (int i = 0; i < 100; i += 10)
+                {
+                    g.DrawEllipse(pen, ballPosX - i / 2, ballPosY - i / 2, ballWidth + i, ballHeight + i);
+                }
+
+                // Copy the updated image back to the screen
+                BitBlt(hdc, 0, 0, screenW, screenH, intPtr, 0, 0, SRCCOPY);
+
+                // Clean up resources
+                DeleteObject(intPtr);
+                DeleteObject(intPtr2);
+
+                // Sleep for a short random time to control animation speed
+                Thread.Sleep(10);
+            }
+        }
+        catch { }
+    }
+}
