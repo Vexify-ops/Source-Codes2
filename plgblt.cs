@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Windows.Forms;
 
 class PlgBltEffect
 {
@@ -46,6 +47,12 @@ class PlgBltEffect
     public static void Main()
     {
         Random random = new Random();
+        int x = Screen.PrimaryScreen.Bounds.X;
+        int y = Screen.PrimaryScreen.Bounds.Y;
+        int left = Screen.PrimaryScreen.Bounds.Left;
+        int top = Screen.PrimaryScreen.Bounds.Top;
+        int right = Screen.PrimaryScreen.Bounds.Right;
+        int bottom = Screen.PrimaryScreen.Bounds.Bottom;
         int screenW = 1920; // Screen width (can be retrieved dynamically)
         int screenH = 1080; // Screen height (can be retrieved dynamically)
 
@@ -80,12 +87,12 @@ class PlgBltEffect
             PatBlt(hdc, 0, 0, random.Next(screenW), random.Next(screenH), PATINVERT);
 
             // Re-create random points for a new effect each time
-            lppoint[0].X = random.Next(screenW);
-            lppoint[0].Y = random.Next(screenH);
-            lppoint[1].X = random.Next(screenW);
-            lppoint[1].Y = random.Next(screenH);
-            lppoint[2].X = random.Next(screenW);
-            lppoint[2].Y = random.Next(screenH);
+            lppoint[0].X = left + (random.Next(screenW));
+            lppoint[0].Y = top + (random.Next(screenH));
+            lppoint[1].X = right + (random.Next(screenW));
+            lppoint[1].Y = top - (random.Next(screenH));
+            lppoint[2].X = left + (random.Next(screenW));
+            lppoint[2].Y = bottom + (random.Next(screenH));
 
             // Delay to control how often the effect is updated
             Thread.Sleep(10); // 10 milliseconds between updates (adjust for faster/slower effects)
